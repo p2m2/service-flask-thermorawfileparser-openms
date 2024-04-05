@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <title>ThermoRawFileParser - Conversion .Raw to mzML/mzXML</title>
+    <style>
+        body {
+            background-color: black;
+            color: white;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        input[type="text"], input[type="file"], select, button {
+            background-color: #333;
+            color: white;
+            border: none;
+            padding: 8px;
+            margin: 5px 0;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        button {
+            cursor: pointer;
+        }
+    </style>
+     <script type="text/javascript">
+  
+        function startLogs() {
+               /* Manage Console */
+               var req = new XMLHttpRequest();
+               
+               req.open("GET", '{{ url_for('logs') }}');
+               req.responseType = 'text'
+               req.send();
+               var result = document.getElementById('result');
+
+               req.onload = function(){
+                  
+               };
+               
+
+               req.onerror = function(error){
+                   startLogs();
+               };
+
+               //Pendant le téléchargement...
+               req.onprogress = function(event){
+
+               };
+               req.onreadystatechange = function() {                    
+                   if(this.readyState == 4 && this.status == 200) {
+                        let data = JSON.parse(req.responseText) ;
+                       
+                        if (!data['run']) {
+                            console.log("fin")
+                           document.body.style.cursor = 'default';
+                           down_file_results.style.display='block';
+                        }
+                        else {
+                           document.body.style.cursor = 'wait'
+                           result.innerHTML = data['console'].replace("\n","<br/>");
+                           startLogs();    
+                        }
+                    }   
+                }
+             //  };
+        }
+
+        function do_process() {
+            // hide button download results file
+            var down_file_results = document.getElementById('down_file_results');
+            down_file_results.style.display='none';
+            
+            /* Manage Post Form */
+            var ajax = new XMLHttpRequest();
+            var data = document.getElementById("myForm");
+            var formdata = new FormData(data);
+            ajax.open("POST", '{{ url_for('process') }}', true);
+            ajax.send(formdata);
+            startLogs();
+        }
+      </script>
+</head>
+<body>
+    <h1>File Conversion Form</h1>
+    <form id="myForm" action="/thermorawfileparser/process" method="post" enctype="multipart/form-data" >
+        <label for="file">Thermo Files (.raw, .zip):</label><br>
+        <input type="file" id="file" name="file"><br><br>
+        <label for="format">Result Format:</label><br>
+        <select id="format" name="format">
+            <option value="mzML">mzML</option>
+            <option value="mzXML">mzXML</option>
+        </select><br><br>
+        <!-- <button type="submit">Send</button>-->
+        <button type="submit" id="btn-post" onclick="do_process();return false;">Click</button> 
+        <pre id="result"></pre>
+        <div id="down_file_results">
+            <a class="btn btn-success" href="{{url_for('download_results')}}">Download</a>
+        </div>
+    </form>
+
+<script type="text/javascript">
+        var down_file_results = document.getElementById('down_file_results');
+        down_file_results.style.display='none';
+</script>
+    
+</body>
+</html>
