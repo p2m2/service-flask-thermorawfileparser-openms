@@ -5,7 +5,11 @@ import shutil
 from zipfile import ZipFile
 
 UPLOAD_FOLDER = '/tmp/'
-ALLOWED_EXTENSIONS = {'zim', 'raw', 'mzML', 'mzXML', 'tar', 'gz'}
+
+## ===============================
+## UPDATE HERE IMAGE
+## ===============================
+docker_image_thermorawfileparser = 'inraep2m2/thermorawfileparser:1.4.3'
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -30,7 +34,7 @@ def logs():
         return jsonify(console="Waiting for Docker container ...",run=True)
     else:
         
-        totall = ""
+        totall = "<h3><i>Docker console ({})</i></h3>".format(docker_image_thermorawfileparser)
         try:
             # Hack to simulate printing asynchronously
             
@@ -42,8 +46,36 @@ def logs():
         except:
             
             run = False
-                    
+
+            ## Hack change Voc MS:1003145 (ThermoRawFileParser to MsConvert) to MS:1000615
+            import glob
+            
+            totall = "<h3><i>Hack W4M</i></h3>"
+            totall += "MS:1003145 (ThermoRawFileParser) -> MS:1000615 (MsConvert)<br/>"
+            
+            for file in glob.glob(diroutputpath+"/*.mz*"):
+                   
+                with open(file, 'r') as f:
+                    filedata = f.read()
+                    f.close()
+                
+                filedata = filedata.replace('MS:1003145', 'MS:1000615')
+                
+                import os 
+                os.remove(file)
+
+                # Write the file out again
+                with open(file, 'w') as f:
+                    f.write(filedata)
+                    f.close()
+                    totall+='<span style="color:red;">' + file.split("/")[-1] + "</span><br/>"
+                
+            ## make archive
+
             shutil.make_archive(app.config['UPLOAD_FOLDER']+'/data', 'zip', diroutputpath)
+            
+            # delete unuserd directories/files
+
             shutil.rmtree(diroutputpath)
             shutil.rmtree(dirworkpath)
             
@@ -63,7 +95,6 @@ def download_results():
 @app.route('/process', methods=['POST'])
 def process():
     # Handle form submission and file processing here
-    print("###########PROCESS")
     if request.method == "POST":
         file = request.files['file']
         format = request.form['format']
@@ -84,16 +115,13 @@ def process():
         global diroutputpath
         diroutputpath = tempfile.mkdtemp()
         
-        #print(dirworkpath)
-        #print(diroutputpath)
-
         global container
         # Crée un client Docker
         
         client = docker.from_env()
-        client.images.pull( 'inraep2m2/thermorawfileparser:1.4.3')
+        client.images.pull( docker_image_thermorawfileparser)
 
-        container = client.containers.run('inraep2m2/thermorawfileparser:1.4.3',
+        container = client.containers.run(docker_image_thermorawfileparser,
                             "--input_directory=/data/ --output=/output/",                            
                             volumes={
                                 dirworkpath : {'bind': '/data/', 'mode': 'rw'},
