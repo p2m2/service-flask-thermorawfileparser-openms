@@ -4,6 +4,7 @@ import tempfile
 import shutil
 from zipfile import ZipFile
 import glob
+import os
 
 UPLOAD_FOLDER = '/tmp/'
 
@@ -61,7 +62,6 @@ def logs():
                 
                 filedata = filedata.replace('MS:1003145', 'MS:1000615')
                 
-                import os 
                 os.remove(file)
 
                 # Write the file out again
