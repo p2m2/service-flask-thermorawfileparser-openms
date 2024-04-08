@@ -1,0 +1,8 @@
+FROM mono:latest
+WORKDIR /app
+RUN apt-get update && apt-get install -y wget unzip
+RUN wget https://github.com/compomics/ThermoRawFileParser/releases/download/v1.4.3/ThermoRawFileParser1.4.3.zip
+RUN unzip ThermoRawFileParser1.4.3.zip
+VOLUME /data
+
+ENTRYPOINT [ "mono", "ThermoRawFileParser.exe" ]
