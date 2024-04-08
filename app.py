@@ -3,6 +3,7 @@ import docker
 import tempfile
 import shutil
 from zipfile import ZipFile
+import glob
 
 UPLOAD_FOLDER = '/tmp/'
 
@@ -48,7 +49,6 @@ def logs():
             run = False
 
             ## Hack change Voc MS:1003145 (ThermoRawFileParser to MsConvert) to MS:1000615
-            import glob
             
             totall = "<h3><i>Hack W4M</i></h3>"
             totall += "MS:1003145 (ThermoRawFileParser) -> MS:1000615 (MsConvert)<br/>"
@@ -106,12 +106,16 @@ def process():
         
         file.save(dirworkpath + "/" + file.filename)
         
+        print(dirworkpath + "/" + file.filename)
+
         # unzip if needed
         if file.filename.endswith(".zip"):
             with ZipFile(dirworkpath + "/" + file.filename, 'r') as f:
                 f.extractall(dirworkpath)
 
-        
+        print("** work directory **")
+        print(glob.glob(dirworkpath+"/*"))
+
         global diroutputpath
         diroutputpath = tempfile.mkdtemp()
         
