@@ -36,7 +36,7 @@
         }
     </style>
      <script type="text/javascript">
-  
+        
         function startLogs() {
                /* Manage Console */
                var req = new XMLHttpRequest();
@@ -49,9 +49,6 @@
                req.responseType = 'text'
                req.send();
                var result = document.getElementById('result');
-
-               document.getElementById('file').disabled = true;
-               document.getElementById('format').disabled = true;
 
                req.onload = function(){
                   
@@ -85,52 +82,24 @@
                 }
              //  };
         }
-
-        function do_process() {
-            // hide button download results file
-            var down_file_results = document.getElementById('down_file_results');
-            down_file_results.style.display='none';
-            
-            /* Manage Post Form */
-            var ajax = new XMLHttpRequest();
-
-            var data = document.getElementById("myForm");
-            var formdata = new FormData(data);
-            ajax.open("POST", '{{ url_for('process') }}', false); //async = false
-            let r = ajax.send(formdata);
-            console.log(r, '{{ container_id }}');
-            startLogs();
-        }
       </script>
 </head>
 <body>
-    
     <a href="https://github.com/p2m2/FlaskInterfaceDockerService" target="_blank" rel="noopener noreferrer"><i class="fa-brands fa-github"></i></a>
     <a class="btn" href="{{url_for('index')}}"><i class="fa-solid fa-house"></i></a>
     container:{{ container_id }}
-    <h1>ThermoRawFileParser - Conversion .Raw to mzML/mzXML</h1>
-    <form id="myForm" action='{{ url_for('process') }}' method="post" enctype="multipart/form-data" >
-        <label for="file">Thermo Files (.raw, .zip):</label><br>
-        <input type="file" id="file" name="file"><br><br>
-        <label for="format">Result Format:</label><br>
-        <select id="format" name="format">
-            <option value="mzML">mzML</option>
-            <option value="mzXML">mzXML</option>
-            <option value="mgf">MGF</option>
-        </select><br><br>
-        <button type="submit">Send</button> 
-        <pre id="result"></pre>
+    <pre id="result"></pre>
         
-        <div id="down_file_results">
-            <a class="btn" href="{{url_for('download_results',container_id=container_id)}}"><i class="fa-solid fa-download"></i></a>  
-            <a class="btn" href="{{url_for('index')}}"><i class="fa-solid fa-house"></i></a>
-        </div>
-        
-    </form>
+    <div id="down_file_results">
+        <a class="btn" href="{{url_for('download_results',container_id=container_id)}}"><i class="fa-solid fa-download"></i></a>  
+        <a class="btn" href="{{url_for('index')}}"><i class="fa-solid fa-house"></i></a>
+    </div>
 
     <script type="text/javascript">
         var down_file_results = document.getElementById('down_file_results');
         down_file_results.style.display='none';
+        /* -- start log -- */
+        startLogs();
     </script>
     
 </body>
