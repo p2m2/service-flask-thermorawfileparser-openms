@@ -19,12 +19,30 @@ pip3 install flask docker python-dotenv
 
 Edit `.flaskenv` to configure the Flask environment variables.
 
+#### production
+
+```
+FLASK_APP = app
+FLASK_DEBUG = False
+FLASK_RUN_HOST="0.0.0.0"
+FLASK_RUN_PORT="80"
+```
+
 ### Run service
 
 ```bash
 . .venv/bin/activate
 flask run
 ```
+
+##### production
+
+```bash
+sudo su root
+source env/bin/activate
+nohup flask run > log.txt 2>&1 &
+```
+
 
 Visit `http://{host}:{port}/` to access the service.
 
