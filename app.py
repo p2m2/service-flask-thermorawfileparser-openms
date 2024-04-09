@@ -57,9 +57,6 @@ def index():
 
 @app.route('/logs/<container_id>')
 def logs(container_id):
-    print(session['containers'])
-    print("************")
-    print(container_id)
     my_session = get_session(container_id)
     
     iternum = my_session['iternum']
@@ -191,6 +188,12 @@ def process():
         if file.filename.endswith(".zip"):
             with ZipFile(dirworkpath + "/" + file.filename, 'r') as f:
                 f.extractall(dirworkpath)
+
+        #print(glob.glob(dirworkpath+"/*"))
+        # hack if the zip is a directory containing files
+        for f in glob.glob(dirworkpath+"/**/*.raw", recursive=True):
+            if not os.path.exists(dirworkpath+"/"+f.split("/").pop()):
+                shutil.move(f,dirworkpath)
 
         diroutputpath = tempfile.mkdtemp()
         
