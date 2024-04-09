@@ -40,8 +40,12 @@
         function startLogs() {
                /* Manage Console */
                var req = new XMLHttpRequest();
-               
-               req.open("GET", '{{ url_for('logs') }}');
+               let container_id = '{{ container_id }}' ;
+               console.log("=================================");
+               console.log(container_id);
+               console.log("=================================");
+
+               req.open("GET", '{{ url_for('logs',container_id=container_id) }}');
                req.responseType = 'text'
                req.send();
                var result = document.getElementById('result');
@@ -90,10 +94,12 @@
             
             /* Manage Post Form */
             var ajax = new XMLHttpRequest();
+
             var data = document.getElementById("myForm");
             var formdata = new FormData(data);
-            ajax.open("POST", '{{ url_for('process') }}', true);
-            ajax.send(formdata);
+            ajax.open("POST", '{{ url_for('process') }}', false); //async = false
+            let r = ajax.send(formdata);
+            console.log(r, '{{ container_id }}');
             startLogs();
         }
       </script>
@@ -102,7 +108,7 @@
     
     <a href="https://github.com/p2m2/FlaskInterfaceDockerService" target="_blank" rel="noopener noreferrer"><i class="fa-brands fa-github"></i></a>
     <a class="btn" href="{{url_for('index')}}"><i class="fa-solid fa-house"></i></a>
-
+    container:{{ container_id }}
     <h1>ThermoRawFileParser - Conversion .Raw to mzML/mzXML</h1>
     <form id="myForm" action="/thermorawfileparser/process" method="post" enctype="multipart/form-data" >
         <label for="file">Thermo Files (.raw, .zip):</label><br>
@@ -114,11 +120,11 @@
             <option value="mgf">MGF</option>
         </select><br><br>
         <!-- <button type="submit">Send</button>-->
-        <button type="submit" id="btn-post" onclick="do_process();return false;">Click</button> 
+        <button type="submit" value="submit" id="btn-post" onclick="do_process()">Click</button> 
         <pre id="result"></pre>
         
         <div id="down_file_results">
-            <a class="btn" href="{{url_for('download_results')}}"><i class="fa-solid fa-download"></i></a>  
+            <a class="btn" href="{{url_for('download_results',container_id=container_id)}}"><i class="fa-solid fa-download"></i></a>  
             <a class="btn" href="{{url_for('index')}}"><i class="fa-solid fa-house"></i></a>
         </div>
         

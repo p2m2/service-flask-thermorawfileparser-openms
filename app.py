@@ -1,12 +1,13 @@
-from flask import Flask, render_template, request, jsonify, send_file
+from flask import Flask, render_template, request, jsonify, send_file, session
+from flask_session import Session
+from cachelib.file import FileSystemCache
+
 import docker
 import tempfile
 import shutil
 from zipfile import ZipFile
 import glob
 import os
-
-UPLOAD_FOLDER = '/tmp/'
 
 ## ===============================
 ## UPDATE HERE IMAGE
@@ -15,32 +16,63 @@ docker_image_thermorawfileparser = 'inraep2m2/thermorawfileparser:1.4.3'
 docker_image_openms              = 'inraep2m2/openms:3.1.0-pre-nightly-2024-02-03'
 
 app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-container = None
-itnum=1
-dirworkpath=None
-diroutputpath=None 
+app.config['SECRET_KEY'] = 'oh_so_secret'
+SESSION_TYPE = 'cachelib'
+SESSION_SERIALIZATION_FORMAT = 'json'
+SESSION_CACHELIB = FileSystemCache(threshold=500, cache_dir=f"{os.path.dirname(__file__)}/sessions")
+app.config.from_object(__name__)
 
-format="mzML"
+Session(app)
+client = docker.from_env()
+        
+def get_session(container_id):
+    idx = session['containers'].index(container_id)
+    if idx >=0 and idx < len(session['containers']):
+        return session['containers'][idx]
+    else: 
+        None
+
+def remove_session(container_id):
+    try:
+        idx = session['containers'].index(container_id)
+        if idx >=0 and idx < len(session['containers']):
+            session['containers'].pop(idx)
+    except:
+        pass
+
+def set_session(container_id,current_session):
+    if 'containers' not in session :
+        session['containers'] = []
+        
+    remove_session(container_id)
+    session['containers'].append(current_session)
+
 
 @app.route('/')
 def index():
-    return render_template('thermorawfileparser.html')
+    return render_template('thermorawfileparser.html',container_id="test....")
 
-@app.route('/logs')
-def logs():
-    global container
-    global itnum
-    global diroutputpath
-    global dirworkpath
-    global format 
+@app.route('/logs/<container_id>')
+def logs(container_id):
+    if container_id == None :
+        return "Error Devel Session. container_id missing. "
+    
+    container = client.containers.get(container_id)
+    session = get_session(container_id)
+
+    itnum = session['iternum']
+    diroutputpath = session['diroutputpath']
+    dirworkpath = session['dirworkpath']
+    format = session['format']
 
     if container is None:
         return jsonify(console="Waiting for Docker container ...",run=True)
     else:
         
         totall = "<h3><i>Docker console ({})</i></h3>".format(docker_image_thermorawfileparser)
+        totall += "Format:{}<br/>".format(format)
+        totall += "Docker id:{}<br/>".format(container.id)
         try:
             # Hack to simulate printing asynchronously
             
@@ -53,7 +85,6 @@ def logs():
             
             run = False
             ## load openms to convert file
-            client = docker.from_env()
             client.images.pull( docker_image_openms ) 
             diroutputpath_withnewformat = tempfile.mkdtemp()
 
@@ -80,8 +111,7 @@ def logs():
                 
                 filename = os.path.basename(file)
                 filename_without_ext = os.path.splitext(filename)[0]
-                print("-in=/data/{} --out=/output/{}".format(filename,filename_without_ext+"."+format))
-                print("===========================")
+                
                 if format !=  "mzML" :
                     totall = "<h3>Docker console ({})</h3>".format(docker_image_openms)
                     totall += '<span style="color:green;">' + (client.containers.run(docker_image_openms,
@@ -92,64 +122,82 @@ def logs():
                                 },
                                 detach=False,
                                 remove=False)).decode("utf-8").replace("\n","<br/>") +"</span><br/>"
-                
+            
+            import uuid
+
+            result_zip_file_tmp = "data_"+str(uuid.uuid4()) 
+        
             ## make archive
             if format !=  "mzML" :
-                shutil.make_archive(app.config['UPLOAD_FOLDER']+'/data', 'zip', diroutputpath_withnewformat)
+                shutil.make_archive(result_zip_file_tmp, 'zip', diroutputpath_withnewformat)
             else:
-                shutil.make_archive(app.config['UPLOAD_FOLDER']+'/data', 'zip', diroutputpath)
-                        
-            # delete unuserd directories/files
+                shutil.make_archive(result_zip_file_tmp, 'zip', diroutputpath)
+            
+
+            result_zip_file=result_zip_file_tmp+".zip"
+            print(glob.glob(result_zip_file+"*"))
+
+            # delete unused directories/files
             shutil.rmtree(diroutputpath_withnewformat)
             shutil.rmtree(diroutputpath)
             shutil.rmtree(dirworkpath)
+            session = {
+                'container'       : None,
+                'itnum'           : 1,
+                'dirworkpath'     : None,
+                'diroutputpath'   : None, 
+                'result_zip_file' : result_zip_file,
+                'format'          : format 
+            }
             
-            container = None
-            itnum=1
-            dirworkpath=None
-            diroutputpath=None 
-            
-    
+            set_session(container_id,session)
+            return jsonify(console=totall,run=run)
+        
+        #print("*************************************")
+        #if container != None:
+        #    session['container']   = str(container.id)
+        #else:
+        #    session['container']   = None
+        #print(session['container'])
+        #print("*************************************")
+        #session['iternum']         = itnum
+        #session['dirworkpath']     = dirworkpath
+        #session['diroutputpath']   = diroutputpath 
+        #session['format']          = format
+
         return jsonify(console=totall,run=run)
 
-@app.route('/download_results')
-def download_results():
-    return send_file(app.config['UPLOAD_FOLDER']+'/data.zip', as_attachment=True)
-     
+@app.route('/download_results/<container_id>')
+def download_results(container_id):
+    if container_id == None :
+        return "Error Devel Session. container_id missing. "
+    
+    result_zip_file = session['result_zip_file']
+    print(result_zip_file)    
+    if (result_zip_file != None):
+        return send_file(result_zip_file, as_attachment=True)
+    else:
+        return render_template('thermorawfileparser.html')
 
-@app.route('/process', methods=['POST'])
+@app.route('/process/', methods=['GET','POST'])
 def process():
     # Handle form submission and file processing here
     if request.method == "POST":
-        global format
-
         file = request.files['file']
         format = request.form['format']
-        print(file)
-        print(format)
-        global dirworkpath
+    
         dirworkpath = tempfile.mkdtemp()
 
-        
         file.save(dirworkpath + "/" + file.filename)
         
-        print(dirworkpath + "/" + file.filename)
-
         # unzip if needed
         if file.filename.endswith(".zip"):
             with ZipFile(dirworkpath + "/" + file.filename, 'r') as f:
                 f.extractall(dirworkpath)
 
-        print("** work directory **")
-        print(glob.glob(dirworkpath+"/*"))
-
-        global diroutputpath
         diroutputpath = tempfile.mkdtemp()
         
-        global container
         # Crée un client Docker
-        
-        client = docker.from_env()
         client.images.pull( docker_image_thermorawfileparser)
 
         container = client.containers.run(docker_image_thermorawfileparser,
@@ -160,12 +208,30 @@ def process():
                                 },
                             detach=True,
                             remove=True)
+
+        print("*******************************************") 
+        print(str(container.id))
+        print(client.containers.get(container.id))
+        #print(client.containers.list(filters={'id': container.id}))
+        print("*******************************************") 
+        
+        session = {}
+        container_id = str(container.id)
+        session['container']       = container_id
+        session['iternum']         = 1
+        session['dirworkpath']     = dirworkpath
+        session['diroutputpath']   = diroutputpath 
+        session['result_zip_file'] = None 
+        session['format']          = format
+
+        set_session(container_id,session)
         ### debugging
         #stream = container.logs(stream=True)
         #for i in stream:
         #    print(i.decode("utf-8")) 
-
-    return render_template('thermorawfileparser.html')
+        print(container_id)
+    print("RETTTTTTTTT")
+    return render_template('thermorawfileparser.html',container_id=container_id)
 
 if __name__ == '__main__':
     app.run(debug=True)
