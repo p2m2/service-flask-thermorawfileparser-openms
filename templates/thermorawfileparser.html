@@ -35,81 +35,30 @@
             color: #fff; /* Couleur du lien */
         }
     </style>
-     <script type="text/javascript">
-  
-        function startLogs() {
-               /* Manage Console */
-               var req = new XMLHttpRequest();
-               let container_id = '{{ container_id }}' ;
-               console.log("=================================");
-               console.log(container_id);
-               console.log("=================================");
+    <script>
+    function required() {
 
-               req.open("GET", '{{ url_for('logs',container_id=container_id) }}');
-               req.responseType = 'text'
-               req.send();
-               var result = document.getElementById('result');
+        if (document.getElementById('file').value == "" ) {
+            alert("Please choose a file before proceeding.");
+            return false;
+        } 
 
-               document.getElementById('file').disabled = true;
-               document.getElementById('format').disabled = true;
-
-               req.onload = function(){
-                  
-               };
-               
-
-               req.onerror = function(error){
-                   startLogs();
-               };
-
-               //Pendant le téléchargement...
-               req.onprogress = function(event){
-
-               };
-               req.onreadystatechange = function() {                    
-                   if(this.readyState == 4 && this.status == 200) {
-                        let data = JSON.parse(req.responseText) ;
-                       
-                        if (!data['run']) {
-                            console.log("fin")
-                           document.body.style.cursor = 'default';
-                           down_file_results.style.display='block';
-                           result.innerHTML += "<br/><b>"+data['console']+"</b><br/>"
-                        }
-                        else {
-                           document.body.style.cursor = 'wait'
-                           result.innerHTML = data['console'].replace("\n","<br/>");
-                           startLogs();    
-                        }
-                    }   
-                }
-             //  };
-        }
-
-        function do_process() {
-            // hide button download results file
-            var down_file_results = document.getElementById('down_file_results');
-            down_file_results.style.display='none';
-            
-            /* Manage Post Form */
-            var ajax = new XMLHttpRequest();
-
-            var data = document.getElementById("myForm");
-            var formdata = new FormData(data);
-            ajax.open("POST", '{{ url_for('process') }}', false); //async = false
-            let r = ajax.send(formdata);
-            console.log(r, '{{ container_id }}');
-            startLogs();
-        }
-      </script>
+        document.body.style.cursor = 'wait'
+        return true;
+    }
+    </script>
 </head>
 <body>
     
     <a href="https://github.com/p2m2/FlaskInterfaceDockerService" target="_blank" rel="noopener noreferrer"><i class="fa-brands fa-github"></i></a>
     <a class="btn" href="{{url_for('index')}}"><i class="fa-solid fa-house"></i></a>
-    container:{{ container_id }}
     <h1>ThermoRawFileParser - Conversion .Raw to mzML/mzXML</h1>
-    <form id="myForm" action='{{ url_for('process') }}' method="post" enctype="multipart/form-data" >
+    <form 
+        id="myForm" 
+        action='{{ url_for('process') }}' 
+        method="post" 
+        onsubmit="return required();"
+        enctype="multipart/form-data" >
         <label for="file">Thermo Files (.raw, .zip):</label><br>
         <input type="file" id="file" name="file"><br><br>
         <label for="format">Result Format:</label><br>
@@ -118,20 +67,7 @@
             <option value="mzXML">mzXML</option>
             <option value="mgf">MGF</option>
         </select><br><br>
-        <button type="submit">Send</button> 
-        <pre id="result"></pre>
-        
-        <div id="down_file_results">
-            <a class="btn" href="{{url_for('download_results',container_id=container_id)}}"><i class="fa-solid fa-download"></i></a>  
-            <a class="btn" href="{{url_for('index')}}"><i class="fa-solid fa-house"></i></a>
-        </div>
-        
+        <button type="submit">Send</button>         
     </form>
-
-    <script type="text/javascript">
-        var down_file_results = document.getElementById('down_file_results');
-        down_file_results.style.display='none';
-    </script>
-    
 </body>
 </html>

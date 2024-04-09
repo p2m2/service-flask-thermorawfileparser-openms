@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, send_file, session
+from flask import Flask, render_template, request, jsonify, send_file, session, abort
 from flask_session import Session
 from cachelib.file import FileSystemCache
 
@@ -20,20 +20,26 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'oh_so_secret'
 SESSION_TYPE = 'cachelib'
 SESSION_SERIALIZATION_FORMAT = 'json'
-SESSION_CACHELIB = FileSystemCache(threshold=500, cache_dir=f"{os.path.dirname(__file__)}/sessions")
+SESSION_CACHELIB = FileSystemCache(threshold=1000, cache_dir=f"{os.path.dirname(__file__)}/sessions")
 app.config.from_object(__name__)
 
 Session(app)
+
 client = docker.from_env()
-        
+client.images.pull(docker_image_thermorawfileparser)
+client.images.pull(docker_image_openms) 
+
+path_download_dir="download_data"
+
+if not os.path.exists(path_download_dir):
+    os.mkdir(path_download_dir)
+
 def get_session(container_id):
-    try:
-        return next(item for item in  session['containers'] if item["container"] == container_id)
-    except:
-        return None
+    return next(item for item in  session['containers'] if ('container_id' in item and item['container_id'] == container_id))
+ 
 
 def remove_session(container_id):
-    session['containers']=[x for x in session['containers'] if not (container_id == x.get('container'))]
+    session['containers']=[x for x in session['containers'] if not (container_id == x.get('container_id'))]
 
 
 def set_session(container_id,current_session):
@@ -51,7 +57,9 @@ def index():
 
 @app.route('/logs/<container_id>')
 def logs(container_id):
-   
+    print(session['containers'])
+    print("************")
+    print(container_id)
     my_session = get_session(container_id)
     
     iternum = my_session['iternum']
@@ -76,7 +84,7 @@ def logs(container_id):
         iternum+=1
         
         my_session = {
-            'container'       : container_id,
+            'container_id'    : container_id,
             'iternum'         : iternum,
             'dirworkpath'     : dirworkpath,
             'diroutputpath'   : diroutputpath, 
@@ -86,8 +94,7 @@ def logs(container_id):
     except :
         container = None
         run = False
-        ## load openms to convert file
-        client.images.pull( docker_image_openms ) 
+        
         diroutputpath_withnewformat = tempfile.mkdtemp()
 
         ## Hack change Voc MS:1003145 (ThermoRawFileParser to MsConvert) to MS:1000615
@@ -127,7 +134,7 @@ def logs(container_id):
         
         import uuid
 
-        result_zip_file_tmp = "data_"+str(uuid.uuid4()) 
+        result_zip_file_tmp = path_download_dir+"/data_"+str(uuid.uuid4()) 
     
         ## make archive
         if format !=  "mzML" :
@@ -135,9 +142,7 @@ def logs(container_id):
         else:
             shutil.make_archive(result_zip_file_tmp, 'zip', diroutputpath)
         
-
         result_zip_file=result_zip_file_tmp+".zip"
-        print(glob.glob(result_zip_file+"*"))
 
         # delete unused directories/files
         shutil.rmtree(diroutputpath_withnewformat)
@@ -145,7 +150,7 @@ def logs(container_id):
         shutil.rmtree(dirworkpath)
         
         my_session = {
-            'container'       : container_id,
+            'container_id'    : container_id,
             'iternum'         : 1,
             'dirworkpath'     : None,
             'diroutputpath'   : None, 
@@ -160,7 +165,7 @@ def logs(container_id):
 def download_results(container_id):
 
     if container_id == None :
-        return "Error Devel Session. container_id missing. "
+        abort(404)
 
     my_session = get_session(container_id)
     
@@ -169,7 +174,7 @@ def download_results(container_id):
     if (result_zip_file != None):
         return send_file(result_zip_file, as_attachment=True)
     else:
-        return render_template('console.html')
+        abort(404)
 
 @app.route('/process/', methods=['GET','POST'])
 def process():
@@ -190,7 +195,7 @@ def process():
         diroutputpath = tempfile.mkdtemp()
         
         # Crée un client Docker
-        client.images.pull( docker_image_thermorawfileparser)
+        
 
         container = client.containers.run(docker_image_thermorawfileparser,
                             "--input_directory=/data/ --output=/output/",                            
@@ -199,20 +204,13 @@ def process():
                                 diroutputpath : {'bind': '/output/', 'mode': 'rw'}
                                 },
                             detach=True,
-                            remove=True)
-
-        print("*******************************************") 
-        print(str(container.id))
-        print(client.containers.get(container.id))
-        #print(client.containers.list(filters={'id': container.id}))
-        print("*******************************************") 
-        
+                            remove=True)        
 
         container_id = str(container.id)
 
         my_session = {
-                'container'       : container_id,
-                'iternum'           : 1,
+                'container_id'    : container_id,
+                'iternum'         : 1,
                 'dirworkpath'     : dirworkpath,
                 'diroutputpath'   : diroutputpath, 
                 'result_zip_file' : None,
@@ -220,12 +218,6 @@ def process():
             }
         
         set_session(container_id,my_session)
-        ### debugging
-        #stream = container.logs(stream=True)
-        #for i in stream:
-        #    print(i.decode("utf-8")) 
-        print(container_id)
-        print(session['containers'])
     
     return render_template('console.html',container_id=container_id)
 
