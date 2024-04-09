@@ -53,7 +53,7 @@ docker run -v $PWD/data:/data -t inraep2m2/thermorawfileparser:1.4.3 -i=/data/MM
 #### Build and push image
 
 ```bash
-docker build . -f Dockerfile_OpenMS -t inraep2m2/openms:3.1.0-pre-nightly-2024-02-03
+docker build . -f Dockerfile_openms -t inraep2m2/openms:3.1.0-pre-nightly-2024-02-03
 docker login --username=p2m2
 docker image push inraep2m2/openms:3.1.0-pre-nightly-2024-02-03
 ```

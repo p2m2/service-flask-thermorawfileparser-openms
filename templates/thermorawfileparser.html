@@ -46,7 +46,9 @@
                req.send();
                var result = document.getElementById('result');
 
-               //document.getElementById('btn-post').remove();
+               document.getElementById('file').disabled = true;
+               document.getElementById('format').disabled = true;
+               document.getElementById('btn-post').disabled = true;
 
                req.onload = function(){
                   
@@ -97,8 +99,11 @@
       </script>
 </head>
 <body>
+    
+    <a href="https://github.com/p2m2/FlaskInterfaceDockerService" target="_blank" rel="noopener noreferrer"><i class="fa-brands fa-github"></i></a>
+    <a class="btn" href="{{url_for('index')}}"><i class="fa-solid fa-house"></i></a>
+
     <h1>ThermoRawFileParser - Conversion .Raw to mzML/mzXML</h1>
-    <pre><a href="https://github.com/p2m2/FlaskInterfaceDockerService" target="_blank" rel="noopener noreferrer"><i class="fa-brands fa-github"></i> P2M2 // FlaskInterfaceDockerService</a></pre>
     <form id="myForm" action="/thermorawfileparser/process" method="post" enctype="multipart/form-data" >
         <label for="file">Thermo Files (.raw, .zip):</label><br>
         <input type="file" id="file" name="file"><br><br>
@@ -111,9 +116,12 @@
         <!-- <button type="submit">Send</button>-->
         <button type="submit" id="btn-post" onclick="do_process();return false;">Click</button> 
         <pre id="result"></pre>
+        
         <div id="down_file_results">
-            <a class="btn btn-success" href="{{url_for('download_results')}}">Download</a>
+            <a class="btn" href="{{url_for('download_results')}}"><i class="fa-solid fa-download"></i></a>  
+            <a class="btn" href="{{url_for('index')}}"><i class="fa-solid fa-house"></i></a>
         </div>
+        
     </form>
 
     <footer>
