@@ -12,7 +12,7 @@ A simple HTML interface for converting RAW format to MzML, MzXML, and MGF files.
 ```bash
 python3 -m venv env
 . env/bin/activate
-pip3 install flask docker python-dotenv
+pip3 install flask docker python-dotenv flask-session cachelib python-memcached
 ```
 
 ### Configuration
@@ -24,8 +24,10 @@ Edit `.flaskenv` to configure the Flask environment variables.
 ```
 FLASK_APP = app
 FLASK_DEBUG = False
+FLASK_TESTING = False
 FLASK_RUN_HOST="0.0.0.0"
 FLASK_RUN_PORT="80"
+FLASK_ENV=production
 ```
 
 ### Run service
@@ -39,7 +41,11 @@ flask run
 
 ```bash
 sudo su root
-source env/bin/activate
+
+python3 -m venv env
+. env/bin/activate
+pip3 install flask docker python-dotenv
+
 nohup flask run > log.txt 2>&1 &
 ```
 
