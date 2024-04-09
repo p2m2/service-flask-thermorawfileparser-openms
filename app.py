@@ -264,7 +264,7 @@ def process():
         
         set_session(container_id,my_session)
     
-    return render_template('console.html',container_id=container_id)
+        return render_template('console.html',container_id=container_id)
 
 if __name__ == '__main__':
     app.run(debug=True)

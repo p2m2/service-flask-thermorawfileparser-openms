@@ -1,4 +1,4 @@
-FLASK_APP = app
+FLASK_APP = app.py
 FLASK_DEBUG = False
 FLASK_TESTING = False
 FLASK_RUN_HOST="0.0.0.0"
